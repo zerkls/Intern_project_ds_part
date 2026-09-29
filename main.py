@@ -6,6 +6,7 @@ from spa_assistant.catalog import load_catalog
 from spa_assistant.config import DATASET_PATH
 from spa_assistant.forecast import forecast_demand
 from spa_assistant.normalize import normalize_movement
+from spa_assistant.qa import answer_question
 
 FIELDS = ("date", "sku", "location", "operation", "qty", "unit", "batch", "doc_no")
 HORIZONS = (30, 90)
@@ -47,19 +48,64 @@ def run_forecast(explain: bool) -> None:
         print("\n" + "\n\n".join(explanations))
 
 
+def run_ask(explain: bool, use_llm: bool) -> None:
+    """Прогнать answer_question на 15 вопросах и вывести таблицу"""
+    with open(DATASET_PATH, encoding="utf-8") as f:
+        dataset = json.load(f)
+    context = {"history": dataset["history"], "use_llm": use_llm}
+    print(
+        "| # | вопрос | разбор | intent | sku | объект | период, дн. | лимит "
+        "| статус | confidence |"
+    )
+    print("|---|---|---|---|---|---|---|---|---|---|")
+    answers = []
+    llm_errors = []
+    flagged = 0
+    for i, question in enumerate(dataset["questions"], start=1):
+        parsed, confidence, text = answer_question(question, context)
+        flagged += parsed["needs_clarification"]
+        sku = parsed["sku"] or "/".join(parsed["sku_candidates"]) or "—"
+        status = parsed["status"] + (f" ({parsed['reason']})" if parsed["reason"] else "")
+        cells = [
+            str(i), question, parsed["parser"], parsed["intent"], sku,
+            parsed["location"] or "—",
+            str(parsed["period_days"] or "—"), str(parsed["budget_limit"] or "—"),
+            status, str(confidence),
+        ]
+        print("| " + " | ".join(cells) + " |")
+        answers.append(f"{i}. {question}\n{text}")
+        if parsed["llm_error"]:
+            llm_errors.append(f"{i}. {parsed['llm_error']}")
+    total = len(dataset["questions"])
+    print(f"\nДоля ответов «требуется уточнение»: {flagged}/{total} = {flagged / total:.0%}")
+    if llm_errors:
+        print("\nGigaChat не использован, вопрос разобран правилами:")
+        print("\n".join(llm_errors))
+    if explain:
+        print("\n" + "\n\n".join(answers))
+
+
 def main() -> None:
+    """Разобрать аргументы командной строки и запустить выбранные части"""
     parser = argparse.ArgumentParser(description="ИИ-помощник по закупкам спа")
     parser.add_argument(
-        "part", choices=["normalize", "forecast"], help="какую часть запустить"
+        "part", choices=["normalize", "forecast", "ask", "all"],
+        help="какую часть запустить",
     )
     parser.add_argument(
         "--explain", action="store_true", help="вывести текстовые объяснения"
     )
+    parser.add_argument(
+        "--llm", action="store_true",
+        help="разбирать вопросы через GigaChat (без ключа — правила)",
+    )
     args = parser.parse_args()
-    if args.part == "normalize":
+    if args.part in ("normalize", "all"):
         run_normalize()
-    elif args.part == "forecast":
+    if args.part in ("forecast", "all"):
         run_forecast(args.explain)
+    if args.part in ("ask", "all"):
+        run_ask(args.explain, args.llm)
 
 
 if __name__ == "__main__":

@@ -207,7 +207,7 @@ def forecast_demand(
             "current_stock": current_stock, "incoming_qty": incoming_qty,
             "safety_stock": None, "reorder_point": None, "recommended_qty": None,
             "estimated_cost": None, "stockout_date": None, "order_date": None,
-            "deficit_risk": None,
+            "deficit_risk": None, "trend_per_week": None, "level_shift": None,
             "confidence": 0.0, "needs_clarification": True,
             "explanation": f"По {sku} нет ни одной недели с данными о расходе.",
         }
@@ -337,6 +337,11 @@ def forecast_demand(
         "stockout_date": stockout_date,
         "order_date": order_date,
         "deficit_risk": deficit_risk,
+        "trend_per_week": round(model.slope, precision),
+        "level_shift": (
+            None if model.shift_week is None
+            else [round(model.shift_before, precision), round(model.shift_after, precision)]
+        ),
         "confidence": confidence,
         "needs_clarification": needs_clarification,
         "explanation": "\n".join(lines),

@@ -1,1 +1,2 @@
 pytest>=8.0
+gigachat>=0.2.3,<0.3
