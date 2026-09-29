@@ -304,7 +304,7 @@ def forecast_demand(
         lines.append("Закупка на этот период не нужна: запаса хватает.")
     lines.append(
         f"Запаса вместе с поставкой в пути хватит до {stockout_date or 'конца года'}; "
-        f"без поставки в пути — до {stockout_no_incoming or 'конца года'}. "
+        f"без поставки в пути - до {stockout_no_incoming or 'конца года'}. "
         f"Заказать не позднее {order_date or 'конца года'}."
     )
     if deficit_risk:
