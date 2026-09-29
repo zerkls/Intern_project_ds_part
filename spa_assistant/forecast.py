@@ -165,7 +165,7 @@ def _first_day(rates: list[float], stop: float) -> int | None:
 
 
 def _date_after(as_of: date, days: int | None) -> str | None:
-    """Дата через days дней после as_of в ISO-формате"""
+    """Дата в ISO-формате, отстоящая от as_of на days дней"""
     return None if days is None else (as_of + timedelta(days=days)).isoformat()
 
 
